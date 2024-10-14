@@ -1,0 +1,19 @@
+import "tfplan/v2" as tfplan
+
+disallowed_resource_types = ["aws_db_instance", "aws_redshift_cluster", "aws_elasticsearch_domain"]
+
+is_disallowed_resource = func(resource) {
+  return resource.type in disallowed_resource_types
+}
+
+new_resources = filter tfplan.resource_changes as rc {
+  rc.change.actions contains "create"
+}
+
+violations = filter new_resources as resource {
+  is_disallowed_resource(resource)
+}
+
+main = rule {
+  length(violations) == 0
+}

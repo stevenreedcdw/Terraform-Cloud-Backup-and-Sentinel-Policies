@@ -1,0 +1,38 @@
+import "tfplan/v2" as tfplan
+
+prohibited_cidrs = ["0.0.0.0/0", "::/0"]
+
+is_prohibited_cidr = func(cidr) {
+  return cidr in prohibited_cidrs
+}
+
+check_resource = func(resource) {
+  cidr_attributes = [
+    "ingress", "egress", "cidr_blocks",
+    "ipv6_cidr_blocks", "cidr_ip", "cidr_ipv6"
+  ]
+
+  for attr in cidr_attributes {
+    blocks = walk(resource.change.after, attr) else []
+    blocks_list = blocks is list ? blocks : [blocks]
+
+    for block in blocks_list {
+      if is_prohibited_cidr(block) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+resource_changes = filter tfplan.resource_changes as rc {
+  rc.change.actions contains any ["create", "update"]
+}
+
+violations = filter resource_changes as rc {
+  check_resource(rc)
+}
+
+main = rule {
+  length(violations) == 0
+}

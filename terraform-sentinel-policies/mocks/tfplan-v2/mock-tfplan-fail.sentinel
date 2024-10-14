@@ -1,0 +1,21 @@
+mock "tfplan/v2" {
+  module {
+    planned_values = {
+      "root_module": {
+        "resources": [
+          {
+            "address": "aws_security_group.example_public",
+            "type": "aws_security_group",
+            "values": {
+              "ingress": [
+                {
+                  "cidr_blocks": ["0.0.0.0/0"]  # Violating ingress rule
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

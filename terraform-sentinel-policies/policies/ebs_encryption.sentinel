@@ -1,0 +1,19 @@
+import "tfplan/v2" as tfplan
+
+is_encrypted = func(resource) {
+  encryption = resource.change.after.encrypted else false
+  return encryption == true
+}
+
+ebs_volumes = filter tfplan.resource_changes as rc {
+  rc.type == "aws_ebs_volume" and
+  (rc.change.actions contains "create" or rc.change.actions contains "update")
+}
+
+violations = filter ebs_volumes as volume {
+  not is_encrypted(volume)
+}
+
+main = rule {
+  length(violations) == 0
+}

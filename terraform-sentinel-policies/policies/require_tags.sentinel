@@ -1,0 +1,21 @@
+import "tfplan/v2" as tfplan
+
+required_tags = ["Environment", "Owner", "CostCenter"]
+
+validate_tags = func(resource) {
+  tags = resource.change.after.tags else {}
+  missing_tags = difference(required_tags, keys(tags))
+  return length(missing_tags) == 0
+}
+
+resource_changes = filter tfplan.resource_changes as rc {
+  rc.change.actions contains "create" or rc.change.actions contains "update"
+}
+
+violations = filter resource_changes as rc {
+  not validate_tags(rc)
+}
+
+main = rule {
+  length(violations) == 0
+}
