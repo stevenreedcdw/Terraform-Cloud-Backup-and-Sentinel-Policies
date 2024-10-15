@@ -1,42 +1,28 @@
+
 #!/bin/bash
 
-# Create the main repository folder
-mkdir -p tfc-backup-to-s3
-cd tfc-backup-to-s3
+# Create the main repository folder for tfc-backup-to-s3
+mkdir -p ../tfc-backup-to-s3
+cd ../tfc-backup-to-s3
 
 # Create folders for backup and scripts
-mkdir -p backup scripts
+mkdir -p backup scripts policies
 
 # Create Python script for Terraform Cloud state backup
 cat > backup/tfc_backup_to_s3.py << 'EOF'
 import requests
 import boto3
-import hvac
+import json
 import os
 from datetime import datetime
 
 # Constants
-VAULT_ADDR = os.getenv("VAULT_ADDR")  # Vault address, e.g., https://vault.example.com
-VAULT_TOKEN = os.getenv("VAULT_TOKEN")  # Vault token for authentication
-VAULT_SECRET_PATH = "secret/tfc-backup"  # Path in Vault where the secrets are stored
-
-# Initialize the Vault client
-client = hvac.Client(url=VAULT_ADDR, token=VAULT_TOKEN)
-
-# Read secrets from Vault
-try:
-    vault_secrets = client.secrets.kv.v2.read_secret_version(path=VAULT_SECRET_PATH)
-    secrets_data = vault_secrets["data"]["data"]
-
-    # Pull values from Vault
-    TERRAFORM_ORG = secrets_data.get("terraform_org")
-    WORKSPACE_NAME = secrets_data.get("workspace_name")
-    ATLAS_TOKEN = secrets_data.get("terraform_cloud_api_token")
-    AWS_REGION = secrets_data.get("aws_region")
-    S3_BUCKET = secrets_data.get("s3_bucket_name")
-    S3_KEY_TEMPLATE = "terraform-backups/{workspace}-{timestamp}.tfstate"
-except Exception as e:
-    raise Exception(f"Failed to fetch secrets from Vault: {str(e)}")
+TERRAFORM_ORG = "your-tfc-organization"
+WORKSPACE_NAME = "your-tfc-workspace"
+ATLAS_TOKEN = os.getenv("TERRAFORM_CLOUD_API_TOKEN")  # Ensure your API token is set in environment variables
+AWS_REGION = "your-aws-region"
+S3_BUCKET = "your-s3-bucket-name"
+S3_KEY_TEMPLATE = "terraform-backups/{workspace}-{timestamp}.tfstate"
 
 # Initialize AWS S3 client
 s3_client = boto3.client("s3", region_name=AWS_REGION)
@@ -102,7 +88,6 @@ EOF
 cat > requirements.txt << 'EOF'
 boto3
 requests
-hvac
 EOF
 
 # Create Shell script for Linux/macOS users
@@ -125,13 +110,25 @@ EOF
 # Make the created Shell script executable
 chmod +x scripts/create_folders_and_run.sh
 
-# Create README.md file
-#cat > README.md << 'EOF'
-# Terraform Cloud Backup to S3
+# Create Sentinel policy for blocking public CIDR
+cat > policies/block_public_cidr.sentinel << 'EOF'
+# This policy uses the Sentinel tfplan/v2 import to validate that no security group
+# rules have the CIDR "0.0.0.0/0" for egress rules. It covers both the
+# aws_security_group and the aws_security_group_rule resources which can both define rules.
 
-## Overview
+# Import the tfplan/v2 import, but use the alias "tfplan"
+import "tfplan/v2" as tfplan
 
-#This repository contains scripts to automate the backup of Terraform Cloud (TFC) state files to an AWS S3 bucket. The Python script interacts with Terraform Cloud's API to download the latest state file and then uploads it to an S3 bucket for secure storage.
+# Forbidden CIDRs
+forbidden_cidrs = ["0.0.0.0/0"]
 
-### Repository Structure
+# Get all Security Group Egress Rules
+SGEgressRules = filter tfplan.resource_changes as address, rc {
+  rc.type is "aws_security_group_rule" and
+  rc.mode is "managed" and
+  (rc.change.actions contains "create" or rc.change.actions contains "update") and
+  rc.change.after.type is "egress"
+}
 
+# Filter to Egress Security Group Rules with violations
+echo "Repository structure and policy files created successfully."
