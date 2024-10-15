@@ -56,28 +56,32 @@ Before running the script, ensure you have the following set up:
    ```bash
    sudo apt-get install jq  # For Debian/Ubuntu
    brew install jq          # For macOS
-Setup
+
+## Setup
 Vault Configuration
 Ensure that the following secrets are stored in the specified Vault path (secret/tfc-backup):
 
 terraform_org: The name of your Terraform Cloud organization.
-terraform_cloud_api_token: API token for accessing Terraform Cloud.
-aws_access_key_id: AWS Access Key ID.
-aws_secret_access_key: AWS Secret Access Key.
-aws_region: AWS region for your S3 bucket.
-s3_bucket_name: Name of the AWS S3 bucket to store the backups.
+**terraform_cloud_api_token**: API token for accessing Terraform Cloud.
+**aws_access_key_id**: AWS Access Key ID.
+**aws_secret_access_key**: AWS Secret Access Key.
+**aws_region**: AWS region for your S3 bucket.
+**s3_bucket_name**: Name of the AWS S3 bucket to store the backups.
+
 AWS S3 Bucket
 Ensure that the S3 bucket where backups will be stored exists. If not, create one in your AWS account and note the bucket name.
 
-##Script Usage
+## Script Usage
 Clone the repository or copy the script to your local machine.
 
 Make the script executable:
 
-bash
+```
+ bash
 Copy code
 chmod +x backup-terraform-cloud.sh
 Update the script with your Vault and Terraform Cloud details:
+```
 
 Replace https://your-vault-address with your actual Vault server's URL.
 Replace your-vault-token with your actual Vault token.
@@ -88,31 +92,34 @@ Retrieve credentials from HashiCorp Vault:
 The script retrieves credentials from Vault by accessing the secret path secret/tfc-backup. It uses the vault kv get command to fetch the secrets in JSON format. The secrets include the Terraform Cloud organization name, API token, AWS credentials, and S3 bucket name.
 
 The retrieved values are parsed using jq to extract the required fields.
-**
+
+
+```
 bash
 Copy code
 export VAULT_ADDR="https://your-vault-address"
 export VAULT_TOKEN="your-vault-token"
 SECRETS=$(vault kv get -format=json secret/tfc-backup)
 Configure AWS CLI with the retrieved credentials:
-**
+```
 
 The AWS CLI is configured using the AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION values retrieved from Vault. These values are exported as environment variables to ensure that subsequent AWS CLI commands use the correct credentials.
 
-**
+```
 bash
 Copy code
 export AWS_ACCESS_KEY_ID=$(echo ${SECRETS} | jq -r '.data.data.aws_access_key_id')
 export AWS_SECRET_ACCESS_KEY=$(echo ${SECRETS} | jq -r '.data.data.aws_secret_access_key')
 export AWS_REGION=$(echo ${SECRETS} | jq -r '.data.data.aws_region')
 Get all workspaces for the Terraform Cloud organization:
-**
+```
 
 The script retrieves all the workspaces in the specified Terraform Cloud organization by making an API call to Terraform Cloud's workspace endpoint. The API token is used for authentication, and the organization name is passed as part of the API URL.
 
 The names of the workspaces are extracted using jq.
 
-**bash
+```
+bash
 Copy code
 WORKSPACES=$(curl -s \
   -H "Authorization: Bearer ${ATLAS_TOKEN}" \
@@ -123,9 +130,10 @@ Loop through each workspace and back up the state file:
 For each workspace, the script retrieves the latest state file URL by making an API call to Terraform Cloud. If the state file is available, it downloads the state file and saves it locally. The state file is then uploaded to the specified S3 bucket using the AWS CLI.
 
 The state file is named using the workspace name and the current timestamp for uniqueness. After uploading the state file to S3, the local copy is deleted to free up space.
-**
+```
 
-**bash
+```
+bash
 Copy code
 for WORKSPACE_NAME in ${WORKSPACES}; do
   echo "Processing workspace: ${WORKSPACE_NAME}"
@@ -157,7 +165,8 @@ for WORKSPACE_NAME in ${WORKSPACES}; do
   fi
 
   rm -f "${WORKSPACE_NAME}.tfstate"
-done**
+done
+```
 
 ##Error Handling
 The script contains error handling to ensure that if any step fails, the script logs a meaningful message and continues with the next workspace. It also ensures that sensitive data like credentials are not printed in the logs.
