@@ -9,9 +9,12 @@ Before running the script, ensure you have the following set up:
 1. **HashiCorp Vault**: Ensure your Vault is running and you have stored your secrets in the path `secret/tfc-backup`.
 2. **AWS CLI**: The AWS CLI should be installed and configured on the machine where the script will run.
 3. **jq**: The `jq` utility is used for processing JSON in Bash. Install it if not already present:
-   ```bash
+
+   ```
+   bash
    sudo apt-get install jq  # For Debian/Ubuntu
    brew install jq          # For MacOS
+   ```
 
 ##Setup
 Vault Configuration
@@ -53,9 +56,11 @@ Before running the script, ensure you have the following set up:
 1. **HashiCorp Vault**: Ensure your Vault is running and you have stored your secrets in the path `secret/tfc-backup`.
 2. **AWS CLI**: The AWS CLI should be installed and configured on the machine where the script will run.
 3. **jq**: The `jq` utility is used for processing JSON in Bash. Install it if not already present:
+
    ```bash
    sudo apt-get install jq  # For Debian/Ubuntu
    brew install jq          # For macOS
+   ```
 
 ## Setup
 Vault Configuration
